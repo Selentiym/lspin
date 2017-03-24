@@ -6,3 +6,4 @@ lspin
 .settings/
 .project
 .cproject
+*.swp
