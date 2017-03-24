@@ -1,0 +1,7 @@
+################################################################################
+# Automatically-generated file. Do not edit!
+################################################################################
+
+USER_OBJS :=
+
+LIBS := -L '/home/nikita/newEclipse/lspin' -llapack -L '/home/nikita/newEclipse/lspin' -lblas
