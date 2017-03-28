@@ -13,8 +13,12 @@ module lspinors
     real(WP)::coeff1,coeff2     !коэффициенты при полиномах лаггера в этом спиноре
     character::letter           !Буква, определяющая компоненту спинора
                                 ! 'U' - верхняя, 'L' - нижняя
+    real(WP), allocatable::lValues(:,:) !Хранит вычисленные однажды значения функции Лагерра
+    integer::nDots, maxN    !Количество этих точек и максимальный порядок функции Лагерра
+    real(WP), allocatable::dots(:)      !Точки, в которых нужны спиноры
 
-
+    private::kappa, gammaRel, Z, Nr, ULdiff, coeff1, coeff2, letter, lValues
+    private::nDots, maxN, dots
 
 contains
 !    function lspinor(x) result(out)
@@ -42,25 +46,25 @@ contains
 !        out = 2
 !    end function lspinor
 
-    function lspinor(x) result(out)
+    function lspinor(dotNum) result(out)
         implicit none
-        real(WP)::x, out
-
-        out = (x**gammaRel) * exp(-x/2) * &
+        real(WP)::out
+        integer::dotNum
+        out = (dots(dotNum)**gammaRel) * &
+        !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
         ( &
-            coeff1 * laguerrePoly(x, 2.0*gammaRel, Nr-1) &
-            + coeff2 * laguerrePoly(x, 2.0*gammaRel, Nr) &
+            coeff1 * laguerrePoly(dotNum, Nr-1) &
+            + coeff2 * laguerrePoly(dotNum, Nr) &
         )
-
     end function lspinor
 
-    function laguerrePoly(x, upperIndex, lowerIndex) result(out)
+    function laguerrePoly(dotNum, degree) result(out)
         implicit none
-        real(WP)::x,upperIndex, out
-        integer::lowerIndex
-        out = 1
+        real(WP)::out
+        integer::dotNum, degree
+        !lf_function
+        out = lValues(dotNum,degree)
     end function laguerrePoly
-
 
     function deltaCronecker(a,b) result (out)
         real(WP)::out
@@ -72,19 +76,43 @@ contains
         end if
     end function deltaCronecker
 
-    subroutine setParameters(iNr, iKappa, iZ, iLetter)
-        !Задаем параметры lspinor'а
+    subroutine setGlobalParameters(iMaxN, iKappa, iZ, iNDots, iDots)
+        real(WP),allocatable::debugLValues(:,:)
+        !Они выделены, тк для них нужно запускать расчет функции Лагерра
         real(WP)::iKappa, iZ !for variable explanation look module comments
+        !Максимальная степень полинома Лагерра, который понадобится
+        ! и число точек, в которых нужны будут значения
+        integer::iMaxN, iNDots
+        !Сами точки, в которых считать
+        real(WP)::iDots(iNDots)
+        kappa = iKappa
+        Z = iZ
+        nDots = iNDots
+        dots = iDots
+        maxN = iMaxN
+
+        gammaRel = sqrt(kappa**2 - (Z/c)**2)
+        !Переменная модуля, хранит значения функций Лагерра нужных порядков
+        allocate(lValues(nDots,0:maxN))
+        allocate(debugLValues(nDots,0:maxN))
+        !Сохранили значения.
+
+        call lf_function ( nDots, maxN, 2.0_WP * gammaRel, dots, debugLValues )
+        lValues(:,:) = debugLValues(:,:)
+        deallocate(debugLValues)
+    end subroutine setGlobalParameters
+
+    subroutine setParameters(iNr, iLetter)
+        !Задаем параметры lspinor'а
+
         integer::iNr
         character::iLetter !for variable explanation look module comments
         !Сохраняем переданные параметры
         Nr = iNr
-        kappa = iKappa
-        Z = iZ
         letter = iLetter
 
         !На основе полученных параметров вычисляем коэффициенты при lspinor'ах
-        gammaRel = sqrt(kappa**2 - (Z/c)**2)
+
         Norm = sqrt(Nr**2 + 2*Nr*gammaRel + kappa**2)
 
         ULdiff = ((Norm - kappa)/(Nr + 2.0*gammaRel))

@@ -36,7 +36,7 @@ lapack_prb.o: ../lapack_prb.f90
 
 lspinors.o: ../lspinors.f90 constants.o laguerre.o
 
-main.o: ../main.f90
+main.o: ../main.f90 constants.o laguerre.o lspinors.o matrix.o
 
 matrix.o: ../matrix.f90
 
