@@ -8,3 +8,4 @@ lspin
 .project
 .cproject
 *.swp
+*.dat
