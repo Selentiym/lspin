@@ -79,6 +79,18 @@ contains
         out = lspinorVectorWithFunc(unityFunc, iNr, iLetter)
     end function lspinorVector
 
+    function lspinorDerivativeVector(iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots)
+        !out = 0.0D+00
+        out = lspinorDerivativeVectorWithFunc(unityFunc, iNr, iLetter)
+    end function lspinorDerivativeVector
+
     function lspinorVectorWithFunc(func, iNr, iLetter) result(out)
         !На выходе столбец заданной в setGlobalParameters
         !длины nDots значений в точках dots
@@ -98,6 +110,26 @@ contains
             out(k) = lspinor(k) * func(dots(k))
         end do
     end function lspinorVectorWithFunc
+
+    function lspinorDerivativeVectorWithFunc(func, iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        external func  !Для большей гибкости передаю функцию, на которую домножается производная Lspinor
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots), dot, func
+        integer::k !Счетчик
+
+        !Настраиваем нужный спинор
+        call setLspinorParameters(iNr, iLetter)
+!        print *, dots
+        !Непосредственно считаем
+        do k=1,nDots
+            out(k) = lspinorDerivative(k) * func(dots(k))
+        end do
+    end function lspinorDerivativeVectorWithFunc
 
     function lspinorDerivative(dotNum) result(out)
         integer::dotNum
