@@ -76,7 +76,7 @@ contains
         character::iLetter
         real(WP)::out(nDots)
         !out = 0.0D+00
-        out = lspinorVectorWithFunc(VPot, iNr, iLetter)
+        out = lspinorVectorWithFunc(unityFunc, iNr, iLetter)
     end function lspinorVector
 
     function lspinorVectorWithFunc(func, iNr, iLetter) result(out)
@@ -99,16 +99,27 @@ contains
         end do
     end function lspinorVectorWithFunc
 
+    function lspinorDerivative(dotNum) result(out)
+        integer::dotNum
+        real(WP)::out
+        out = gammaRel * lspinor(dotNum) / dots(dotNum) - &
+        0.5_WP * lspinor(dotNum) + &
+        (-coeff1 * laguerrePolyDerivative(dotNum, Nr - 1) + &
+         coeff2 * laguerrePolyDerivative(dotNum, Nr))
+    end function lspinorDerivative
+
     function lspinor(dotNum) result(out)
         implicit none
-        real(WP)::out
+        real(WP)::out, test
         integer::dotNum
         !print *, coeff1
         !print *, coeff2
-        out = (dots(dotNum)**gammaRel) * &
+        test = gammaRel
+        !out = (dots(dotNum)**gammaRel) * &
+        out =  & !x ** gammaRel тоже учитывается в интегралах
         !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
         ( &
-            coeff1 * laguerrePoly(dotNum, Nr-1) &
+            - coeff1 * laguerrePoly(dotNum, Nr-1) &
             + coeff2 * laguerrePoly(dotNum, Nr) &
         )
     end function lspinor
@@ -209,5 +220,10 @@ contains
         real(WP)::f, x
         f = x**4
     end function f
+
+    function ampl(x)
+        real(WP)::x, ampl
+        ampl = exp(-x/2) * x ** (gammaRel)
+    end function ampl
 
 end module lspinors
