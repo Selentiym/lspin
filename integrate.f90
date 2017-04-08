@@ -10,13 +10,17 @@ module integrate
     private qLen, x, w
 
 contains
-    subroutine setQuadratureParameters(iQLen)
+    subroutine setQuadratureParameters(iQLen, iAlpha)
+        !Генерирует и сохраняет точки и веса для дальнейшего
+        !интегрирования. Считаются интегралы типа
+        !exp(-x)*x**iAlpha*f(x)
         integer::iQLen
+        real(WP)::iAlpha
         !Сохраянем на будущее число точек
         qLen = iQLen
         !Выделяем память и вычисляем узлы и веса
         allocate(x(qLen),w(qLen))
-        call l_quadrature_rule(qLen, x, w)
+        call lf_quadrature_rule(qLen, iAlpha, x, w)
     end subroutine setQuadratureParameters
 
     function integrateOnGrid(f1,f2) result(out)

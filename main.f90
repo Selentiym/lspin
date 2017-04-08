@@ -37,6 +37,8 @@ program compute
     real(WP), allocatable::V(:,:,:,:)
     !Матричные элементы с 1/x
     real(WP), allocatable::revLen(:,:,:,:)
+    !Матричные элементы с производной
+    real(WP), allocatable::deriv(:,:,:,:)
     !Гамильтониан и правая часть
     real(WP), allocatable::Ham(:,:), S(:,:)
     !Тестовые переменные
@@ -53,7 +55,7 @@ program compute
     ! 2*qLen - 1. Чтобы интегрировать произведения полиномов Лагерра (степень 2*N),
     !нужно взять такую qLen:
     qLen = N + 1
-    call setQuadratureParameters(qLen)
+    call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa))
     call setLspinorGlobalParameters(N, kappa, Z, getIntegrateGridLength(), getIntegrateGrid())
     !allocate(testV(qLen))
     !Проблемы с 0 порядком
@@ -65,6 +67,7 @@ program compute
 
     allocate(gram(1:2,1:2,N,N))
     allocate(V(1:2,1:2,N,N))
+    allocate(deriv(1:2,1:2,N,N))
     allocate(revLen(1:2,1:2,N,N))
     allocate(Ham(2*N,2*N))
     allocate(S(2*N,2*N))
@@ -87,8 +90,20 @@ program compute
         revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
         revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
         !Производные
+        deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
+        deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
+        deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
+        deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
         end do
     end do
+
+    Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
+    Ham(1:N,N+1:2*N) = -c * deriv(1,2,:,:) + c * kappa * revLen(1,2,:,:)
+    Ham(N+1:2*N,1:N) = c * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
+    Ham(N+1:2*N,N+1:2*N) = - c**2 * gram(2,2,:,:) + V(2,2,:,:)
+    S(:,:) = 0;
+    S(1:N,1:N) = gram(1,1,:,:)
+    S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
 
     deallocate(Ham)
     deallocate(S)
@@ -97,6 +112,7 @@ program compute
 !    print *, gram
     deallocate(gram)
     deallocate(V)
+    deallocate(deriv)
     deallocate(revLen)
 !    !Проверка ортогональности полиномов Лагерра
 !    call setGlobalParameters(N - 1, 0.0_WP, 0.0_WP, qLen, x)

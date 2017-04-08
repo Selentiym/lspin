@@ -207,7 +207,7 @@ contains
         dots = iDots
         maxN = iMaxN
 
-        gammaRel = sqrt(kappa**2 - (Z/c)**2)
+        gammaRel = calculateGamma(kappa)
         testGamma = gammaRel
         !Переменная модуля, хранит значения функций Лагерра нужных порядков
         allocate(lValues(nDots,0:maxN))
@@ -218,6 +218,11 @@ contains
         lValues(:,:) = debugLValues(:,:)
         deallocate(debugLValues)
     end subroutine setLspinorGlobalParameters
+
+    function calculateGamma(iKappa) result(out)
+        real(WP)::out, iKappa
+        out = sqrt(iKappa**2 - (Z/c)**2)
+    end function calculateGamma
 
     subroutine setLspinorParameters(iNr, iLetter)
         real(WP)::testGamma
