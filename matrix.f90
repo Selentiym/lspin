@@ -24,4 +24,33 @@ module matrix
 !        end do
     end subroutine eigvect_c8
 
+    subroutine general_eigvect_r8 (H, S, OUTp)
+    real(8),allocatable::OUTp(:), work(:), iwork(:), H(:,:),S(:,:)
+    integer:: N, itype, lda, ldb, lwork, liwork, info
+    character:: jobz, uplo
+
+    N=size(H,1)
+
+    itype = 1 !Ac=\lambda Bc
+
+    jobz = 'V' !Both: values and vectors are needed
+
+    uplo = 'U' !Upper triangles are stored
+
+    lda = N !all matrix has to be diagonalized
+    ldb = N
+
+    lwork = 1 + 6*N + 2*N**2
+    allocate(work(lwork))
+
+    liwork = 3 + 5 * N
+    allocate(iwork(liwork))
+
+    call dsygvd(itype, jobz, uplo, N, H, lda, S, ldb, OUTp, work, lwork, iwork, liwork, info)
+
+    deallocate(iwork)
+    deallocate(work)
+
+    end subroutine general_eigvect_r8
+
 end module matrix

@@ -147,6 +147,9 @@ contains
         !print *, coeff1
         !print *, coeff2
         test = gammaRel
+        if (Nr .eq. 0) then
+            out = 1.0D+00
+        else
         !out = (dots(dotNum)**gammaRel) * &
         out =  & !x ** gammaRel тоже учитывается в интегралах
         !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
@@ -154,6 +157,10 @@ contains
             - coeff1 * laguerrePoly(dotNum, Nr-1) &
             + coeff2 * laguerrePoly(dotNum, Nr) &
         )
+        end if
+
+
+
     end function lspinor
 
     function laguerrePolyDerivative(dotNum, degree) result (out)

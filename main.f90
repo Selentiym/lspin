@@ -40,14 +40,16 @@ program compute
     !Матричные элементы с производной
     real(WP), allocatable::deriv(:,:,:,:)
     !Гамильтониан и правая часть
-    real(WP), allocatable::Ham(:,:), S(:,:)
+    real(WP), allocatable::Ham(:,:), S(:,:), E(:)
     !Тестовые переменные
     real(WP), allocatable::testV(:)
     real(WP), allocatable::testM(:,:)
 
 
     !Задаем длину базиса, потом будет как-нибудь вводиться
-    N = 10
+    !N = 100
+    print *, "Specify basis length for each component"
+    read *, N
     kappa = 1.0_WP
     Z = 1.0_WP
     !Вычисляем число узлов квадратуры и выделяем память на узлы и веса
@@ -71,29 +73,32 @@ program compute
     allocate(revLen(1:2,1:2,N,N))
     allocate(Ham(2*N,2*N))
     allocate(S(2*N,2*N))
+    allocate(E(2*N))
     !Считаем по очереди все необходимые матричные элементы
     do i=1,N
         do j=1,N
+        !i = k-1
+        !j = l-1
         !Матрица неортогональности
         gram(1,1,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'U'))
-        gram(1,2,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'L'))
-        gram(2,1,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'U'))
+        !gram(1,2,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'L'))
+       ! gram(2,1,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'U'))
         gram(2,2,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'L'))
         !Матричный элемент потенциала
         V(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'U'))
-        V(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'L'))
-        V(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'U'))
+        !V(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'L'))
+        !V(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'U'))
         V(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'L'))
         !С 1/r
-        revLen(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'U'))
+        !revLen(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'U'))
         revLen(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'L'))
         revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
-        revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
+        !revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
         !Производные
-        deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
+        !deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
         deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
         deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
-        deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
+        !deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
         end do
     end do
 
@@ -105,8 +110,15 @@ program compute
     S(1:N,1:N) = gram(1,1,:,:)
     S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
 
+    call general_eigvect_r8(Ham, S, E)
+
+    E(:) = E(:) - c**2
+
+    print *, E
+
     deallocate(Ham)
     deallocate(S)
+    deallocate(E)
 
     print *, "end"
 !    print *, gram
