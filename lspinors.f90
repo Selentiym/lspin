@@ -59,7 +59,7 @@ contains
 
     function VPot(r)
         real(WP)::VPot,r
-        VPot = Z/r
+        VPot = -Z/r
     end function VPot
 
     function unityFunc(x)
@@ -147,7 +147,7 @@ contains
         !print *, coeff1
         !print *, coeff2
         test = gammaRel
-        if (Nr .eq. 0) then
+        if (Nr .eq. -100) then
             out = 1.0D+00
         else
         !out = (dots(dotNum)**gammaRel) * &
@@ -213,10 +213,11 @@ contains
         nDots = iNDots
         dots = iDots
         maxN = iMaxN
-
-        gammaRel = calculateGamma(kappa)
+        maxN = maxN + 1
+        gammaRel = calculateGamma(kappa, Z)
         testGamma = gammaRel
         !Переменная модуля, хранит значения функций Лагерра нужных порядков
+        if (allocated(lValues)) deallocate (lValues)
         allocate(lValues(nDots,0:maxN))
         allocate(debugLValues(nDots,0:maxN))
         !Сохранили значения.
@@ -226,9 +227,9 @@ contains
         deallocate(debugLValues)
     end subroutine setLspinorGlobalParameters
 
-    function calculateGamma(iKappa) result(out)
-        real(WP)::out, iKappa
-        out = sqrt(iKappa**2 - (Z/c)**2)
+    function calculateGamma(iKappa, iZ) result(out)
+        real(WP)::out, iKappa, iZ
+        out = sqrt(iKappa**2 - (iZ/c)**2)
     end function calculateGamma
 
     subroutine setLspinorParameters(iNr, iLetter)

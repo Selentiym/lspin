@@ -19,6 +19,8 @@ contains
         !Сохраянем на будущее число точек
         qLen = iQLen
         !Выделяем память и вычисляем узлы и веса
+        if (allocated(x)) deallocate(x)
+        if (allocated(w)) deallocate(w)
         allocate(x(qLen),w(qLen))
         call lf_quadrature_rule(qLen, iAlpha, x, w)
     end subroutine setQuadratureParameters
@@ -29,6 +31,7 @@ contains
         real(WP)::f1(qLen), f2(qLen)
         real(WP)::out
         integer::i
+        out = 0.0D+00
         do i=1,qLen
             out = out + f1(i)*f2(i)*w(i)
         end do
@@ -45,5 +48,11 @@ contains
         integer::out
         out = qLen
     end function getIntegrateGridLength
+
+    function getIntegrateWeights() result (wOut)
+        real(WP),allocatable::wOut(:)
+        allocate(wOut(qLen))
+        wOut(:) = w(:)
+    end function getIntegrateWeights
 
 end module integrate

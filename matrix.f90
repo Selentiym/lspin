@@ -53,4 +53,17 @@ module matrix
 
     end subroutine general_eigvect_r8
 
+    subroutine print_r8(A, firstIndex)
+        real(8), allocatable::A(:,:)
+        integer::i,k, firstIndex, upperBound1, upperBound2
+        upperBound1 = size(A,1) - 1 + firstIndex
+        upperBound2 = size(A,2) - 1 + firstIndex
+        do i=firstIndex,upperBound1
+            do j=firstIndex,upperBound2
+                write(*, "(F20.7)" , advance="no") A(i,j)
+            end do
+            write(*,*)
+        end do
+    end subroutine print_r8
+
 end module matrix
