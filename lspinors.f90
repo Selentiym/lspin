@@ -17,8 +17,9 @@ module lspinors
     integer::nDots, maxN    !Количество этих точек и максимальный порядок функции Лагерра
     real(WP), allocatable::dots(:)      !Точки, в которых нужны спиноры
 
-    private::Z, kappa, Nr, Norm, gammaRel, ULdiff, coeff1, coeff2, letter, lValues
-    private::nDots, maxN, dots
+    private::Z, kappa, Nr, Norm, gammaRel, ULdiff
+!    private:: coeff1, coeff2
+    private::nDots, maxN, dots, letter, lValues
 
 contains
 !    function lspinor(x) result(out)
@@ -59,6 +60,7 @@ contains
 
     function VPot(r)
         real(WP)::VPot,r
+        !VPot = 0.0D+00
         VPot = -Z/r
     end function VPot
 
@@ -157,6 +159,9 @@ contains
             - coeff1 * laguerrePoly(dotNum, Nr-1) &
             + coeff2 * laguerrePoly(dotNum, Nr) &
         )
+
+        !uncomment
+        !out = laguerrePoly(dotNum, Nr)
         end if
 
 
