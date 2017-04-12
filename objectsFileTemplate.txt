@@ -4,4 +4,4 @@
 
 USER_OBJS :=
 
-LIBS := -L '/home/nikita/newEclipse/lspin' -llapack -L '/home/nikita/newEclipse/lspin' -lblas
+LIBS := -L"../" -llapack -lblas 

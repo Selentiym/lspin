@@ -4,5 +4,5 @@
 
 USER_OBJS :=
 
-LIBS := -L"../" -llapack
+LIBS := -L"../" -llapack -lblas 
 
