@@ -36,16 +36,28 @@ program compute
     real(WP), allocatable::deriv(:,:,:,:)
     !Гамильтониан и правая часть
     real(WP), allocatable::Ham(:,:), S(:,:), E(:)
+    !Задает тип базиса
+    character::letter
     !Тестовые переменные
     real(WP), allocatable::testV(:)
     real(WP), allocatable::testM(:,:)
 
 
+    !print *, "Select basis type. P - laguerre Polynomials, L - L-spinors"
+    open(unit=18, file='program.ini')
+    read (18,*) letter
+    read(18, *) N
+    read(18, *) kappa
+    read(18, *) Z
+
+    !kappa = 1.0_WP
+    !Z = 1.0_WP
+    close(18)
+    !read *, letter
     !Читаем длину базиса
-    print *, "Specify basis length for each component"
-    read *, N
-    kappa = 1.0_WP
-    Z = 1.0_WP
+    !print *, "Specify basis length for each component"
+    !read *, N
+
     !Вычисляем число узлов квадратуры и выделяем память на узлы и веса
     !алгебраическая точность квадратурной формулы Гусса-Лагерра равна
     ! 2*qLen - 1. Чтобы интегрировать произведения полиномов Лагерра (степень 2*N),
@@ -68,34 +80,64 @@ program compute
     allocate(Ham(2*N,2*N))
     allocate(S(2*N,2*N))
     allocate(E(2*N))
-    !Считаем по очереди все необходимые матричные элементы
-    do i=1,N
-        do j=1,N
-        !i = k-1
-        !j = l-1
-        !Матрица неортогональности
-        gram(1,1,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'U'))
-        !gram(1,2,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'L'))
-       ! gram(2,1,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'U'))
-        gram(2,2,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'L'))
-        !Матричный элемент потенциала
-        V(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'U'))
-        !V(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'L'))
-        !V(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'U'))
-        V(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'L'))
-        !С 1/r
-        !revLen(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'U'))
-        revLen(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'L'))
-        revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
-        !revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
-        !Производные
-        !deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
-        deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
-        deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
-        !deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
-        end do
-    end do
 
+    if (letter == 'L') then
+        !Считаем все необходимые матричные элементы на L-spinor'ах
+        do i=1,N
+            do j=1,N
+            !i = k-1
+            !j = l-1
+            !Матрица неортогональности
+            gram(1,1,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'U'))
+            !gram(1,2,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'L'))
+           ! gram(2,1,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'U'))
+            gram(2,2,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'L'))
+            !Матричный элемент потенциала
+            V(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'U'))
+            !V(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'L'))
+            !V(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'U'))
+            V(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'L'))
+            !С 1/r
+            !revLen(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'U'))
+            revLen(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'L'))
+            revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
+            !revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
+            !Производные
+            !deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
+            deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
+            deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
+            !deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
+            end do
+        end do
+    else
+        !Считаем все необходимые матричные элементы на полиномах Лагерра
+        do i=1,N
+            do j=1,N
+            !i = k-1
+            !j = l-1
+            !Матрица неортогональности
+            gram(1,1,i,j) = integrateOnGrid(lagVector(i, 'U'),lagVector(j, 'U'))
+            !gram(1,2,i,j) = integrateOnGrid(lagVector(i, 'U'),lagVector(j, 'L'))
+           ! gram(2,1,i,j) = integrateOnGrid(lagVector(i, 'L'),lagVector(j, 'U'))
+            gram(2,2,i,j) = integrateOnGrid(lagVector(i, 'L'),lagVector(j, 'L'))
+            !Матричный элемент потенциала
+            V(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(VPot, j,'U'))
+            !V(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(VPot, j,'L'))
+            !V(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(VPot, j,'U'))
+            V(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(VPot, j,'L'))
+            !С 1/r
+            !revLen(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(oneToX, j,'U'))
+            revLen(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(oneToX, j,'L'))
+            revLen(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(oneToX, j,'U'))
+            !revLen(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(oneToX, j,'L'))
+            !Производные
+            !deriv(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagDerivativeVector(j,'U'))
+            deriv(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagDerivativeVector(j,'L'))
+            deriv(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagDerivativeVector(j,'U'))
+            !deriv(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagDerivativeVector(j,'L'))
+            end do
+        end do
+    end if
     Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
     Ham(1:N,N+1:2*N) = -c * deriv(1,2,:,:) + c * kappa * revLen(1,2,:,:)
     Ham(N+1:2*N,1:N) = c * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
@@ -103,7 +145,13 @@ program compute
     S(:,:) = 0;
     S(1:N,1:N) = gram(1,1,:,:)
     S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
-
+    print *, "Derivatives, UL"
+    call print4dimAs2(1,2,deriv)
+    print *, "Derivatives, LU"
+    call print4dimAs2(2,1,deriv)
+    print *, "Hamiltonian"
+    call print_r8(Ham, 1)
+    print *,"S"
     call print_r8(S, 1)
 
     call general_eigvect_r8(Ham, S, E)
@@ -112,8 +160,8 @@ program compute
 
     E(:) = E(:) - c**2
 
-    do i=1,N
-        print *, E(2*N - i)
+    do i=2*N,N+1,-1
+        print *, E(i)
     end do
 
     deallocate(Ham)

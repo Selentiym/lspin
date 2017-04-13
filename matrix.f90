@@ -60,10 +60,25 @@ module matrix
         upperBound2 = size(A,2) - 1 + firstIndex
         do i=firstIndex,upperBound1
             do j=firstIndex,upperBound2
-                write(*, "(F20.7)" , advance="no") A(i,j)
+                write(*, "(F10.2)" , advance="no") A(i,j)
             end do
             write(*,*)
         end do
     end subroutine print_r8
+
+    function from4to2dim(f,s,A) result(out)
+        real(8), allocatable::A(:,:,:,:), out(:,:)
+        integer::f,s,fSize,sSize
+        fSize = size(A,3)
+        sSize = size(A,4)
+        allocate (out(fSize,sSize))
+        out(:,:) = A(f,s,:,:)
+    end function from4to2dim
+
+    subroutine print4dimAs2(f,s,A)
+        real(8), allocatable::A(:,:,:,:)
+        integer::f,s
+        call print_r8(from4to2dim(f, s, A), 1)
+    end subroutine print4dimAs2
 
 end module matrix

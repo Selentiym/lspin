@@ -152,21 +152,88 @@ contains
         if (Nr .eq. -100) then
             out = 1.0D+00
         else
-        !out = (dots(dotNum)**gammaRel) * &
-        out =  & !x ** gammaRel тоже учитывается в интегралах
+        out = (dots(dotNum)**gammaRel) * &
+        !out =  & !x ** gammaRel тоже учитывается в интегралах
         !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
         ( &
             - coeff1 * laguerrePoly(dotNum, Nr-1) &
             + coeff2 * laguerrePoly(dotNum, Nr) &
         )
 
-        !uncomment
-        !out = laguerrePoly(dotNum, Nr)
+        out = laguerrePoly(dotNum, Nr)
         end if
-
-
-
     end function lspinor
+
+function lagVector(iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots)
+        !out = 0.0D+00
+        out = lagVectorWithFunc(unityFunc, iNr, iLetter)
+    end function lagVector
+
+    function lagDerivativeVector(iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots)
+        !out = 0.0D+00
+        out = lagDerivativeVectorWithFunc(unityFunc, iNr, iLetter)
+    end function lagDerivativeVector
+
+    function lagVectorWithFunc(func, iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        external func  !Для большей гибкости передаю функцию, на которую домножается Lspinor
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots), dot, func
+        integer::k !Счетчик
+
+        !Настраиваем нужный спинор
+        call setLspinorParameters(iNr, iLetter)
+!        print *, dots
+        !Непосредственно считаем
+        do k=1,nDots
+            out(k) = laguerrePoly(k, iNr) * func(dots(k))
+        end do
+    end function lagVectorWithFunc
+
+    function lagDerivativeVectorWithFunc(func, iNr, iLetter) result(out)
+        !На выходе столбец заданной в setGlobalParameters
+        !длины nDots значений в точках dots
+        !При фиксированном в setGlobalParameters значении
+        !gammaRel lspinor задается iNr и iLetter
+        external func  !Для большей гибкости передаю функцию, на которую домножается производная Lspinor
+        integer::iNr
+        character::iLetter
+        real(WP)::out(nDots), dot, func
+        integer::k !Счетчик
+
+        !Настраиваем нужный спинор
+        call setLspinorParameters(iNr, iLetter)
+!        print *, dots
+        !Непосредственно считаем
+        do k=1,nDots
+            !Базисная функция - не просто полином Лагерра, а домноженный
+            !на exp(-x/2)*x**gammaRel
+            out(k) = func(dots(k)) * &
+            (&
+                laguerrePolyDerivative(k, iNr) &
+                -0.5_WP * laguerrePoly(k, iNr)  &
+                + gammaRel/dots(k) * laguerrePoly(k, iNr) &
+            )
+        end do
+    end function lagDerivativeVectorWithFunc
 
     function laguerrePolyDerivative(dotNum, degree) result (out)
         implicit none

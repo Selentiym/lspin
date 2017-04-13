@@ -50,7 +50,7 @@
 !    deallocate(lspin1)
 !    deallocate(lspin2)
 !
-!    call testLspinorOrthogonality()
+!    call testLaguerreOrthog()
 !
 !contains
 !
@@ -83,8 +83,9 @@
 !                do i=1,qL
 !                    poly1(i) = laguerrePoly(i, di)
 !                    poly2(i) = laguerrePoly(i, dj)
-!                    summa = summa + poly1(i) * poly2(i) * w1(i)
+!                    !summa = summa + poly1(i) * poly2(i) * w1(i)
 !                end do
+!                summa = integrateOnGrid(poly1, poly2)
 !                write(*, "(F20.7)" , advance="no") summa
 !                gramTest(dj,di) = summa
 !            end do
