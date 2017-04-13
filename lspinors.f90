@@ -160,7 +160,7 @@ contains
             + coeff2 * laguerrePoly(dotNum, Nr) &
         )
 
-        out = laguerrePoly(dotNum, Nr)
+        !out = laguerrePoly(dotNum, Nr)
         end if
     end function lspinor
 

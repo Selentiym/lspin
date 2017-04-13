@@ -63,6 +63,7 @@ program compute
     ! 2*qLen - 1. Чтобы интегрировать произведения полиномов Лагерра (степень 2*N),
     !нужно взять такую qLen:
     qLen = N + 1
+    !qLen = max(N+1, 3000)
     call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa, Z))
     call setLspinorGlobalParameters(N, kappa, Z, getIntegrateGridLength(), getIntegrateGrid())
     !allocate(testV(qLen))
@@ -103,7 +104,7 @@ program compute
             revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
             !revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
             !Производные
-            !deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
+            deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
             deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
             deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
             !deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
@@ -147,6 +148,8 @@ program compute
     S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
     print *, "Derivatives, UL"
     call print4dimAs2(1,2,deriv)
+    print *, "Derivatives, UU"
+    call print4dimAs2(1,1,deriv)
     print *, "Derivatives, LU"
     call print4dimAs2(2,1,deriv)
     print *, "Hamiltonian"
