@@ -11,13 +11,14 @@ module lspinors
     real(WP)::gammaRel          !Релятивистское квантовое число
     real(WP)::ULdiff            !Слагаемое, которое идет с разным знаком в зависимости от типа спинора
     real(WP)::coeff1,coeff2     !коэффициенты при полиномах лаггера в этом спиноре
+    real(WP)::realNorm          !нормировка L-spinor'ов
     character::letter           !Буква, определяющая компоненту спинора
                                 ! 'U' - верхняя, 'L' - нижняя
     real(WP), allocatable::lValues(:,:) !Хранит вычисленные однажды значения функции Лагерра
     integer::nDots, maxN    !Количество этих точек и максимальный порядок функции Лагерра
     real(WP), allocatable::dots(:)      !Точки, в которых нужны спиноры
 
-    private::Z, kappa, Nr, Norm, gammaRel, ULdiff
+    private::Z, kappa, Nr, Norm, gammaRel, ULdiff, realNorm
 !    private:: coeff1, coeff2
     private::nDots, maxN, dots, letter, lValues
 
@@ -164,7 +165,7 @@ contains
         end if
     end function lspinor
 
-function lagVector(iNr, iLetter) result(out)
+    function lagVector(iNr, iLetter) result(out)
         !На выходе столбец заданной в setGlobalParameters
         !длины nDots значений в точках dots
         !При фиксированном в setGlobalParameters значении
@@ -204,7 +205,7 @@ function lagVector(iNr, iLetter) result(out)
 !        print *, dots
         !Непосредственно считаем
         do k=1,nDots
-            out(k) = laguerrePoly(k, iNr) * func(dots(k))
+            out(k) = laguerrePoly(k, iNr) * func(dots(k)) / sqrt(laguerrePolyNorm(iNr))
         end do
     end function lagVectorWithFunc
 
@@ -231,7 +232,7 @@ function lagVector(iNr, iLetter) result(out)
                 laguerrePolyDerivative(k, iNr) &
                 -0.5_WP * laguerrePoly(k, iNr)  &
                 + gammaRel/dots(k) * laguerrePoly(k, iNr) &
-            )
+            ) / sqrt(laguerrePolyNorm(iNr))
         end do
     end function lagDerivativeVectorWithFunc
 
@@ -317,7 +318,7 @@ function lagVector(iNr, iLetter) result(out)
         !На основе полученных параметров вычисляем коэффициенты при полиномах лагерра
         Norm = sqrt(Nr**2 + 2*Nr*gammaRel + kappa**2)
 
-        testGamma = Norm
+        !testGamma = Norm
 
         ULdiff = ((Norm - kappa)/(Nr + 2.0*gammaRel))
 
@@ -331,7 +332,22 @@ function lagVector(iNr, iLetter) result(out)
         coeff2 = Norm * ULdiff
         testGamma = coeff2
 
+        realNorm = sqrt(coeff1 ** 2 *laguerrePolyNorm(Nr - 1) + coeff2 ** 2 * laguerrePolyNorm(Nr))
+
+        coeff1 = coeff1 / realNorm
+        coeff2 = coeff2 / realNorm
+
     end subroutine setLspinorParameters
+
+    function laguerrePolyNorm(iNr) result(out)
+        integer::iNr
+        real(WP)::out
+        if (iNr >= 0) then
+            out = gamma(2.0D+00*gammaRel + real(iNr + 1,WP))/gamma(real(iNr + 1,WP))
+        else
+            out = 0.0D+00
+        end if
+    end function laguerrePolyNorm
 
     function f(x)
         real(WP)::f, x

@@ -58,12 +58,15 @@ module matrix
         integer::i,k, firstIndex, upperBound1, upperBound2
         upperBound1 = size(A,1) - 1 + firstIndex
         upperBound2 = size(A,2) - 1 + firstIndex
+        open(unit=17, file="matrix_output.dat",Access = 'append',status="old")
         do i=firstIndex,upperBound1
             do j=firstIndex,upperBound2
-                write(*, "(F10.2)" , advance="no") A(i,j)
+                write(17, "(F10.2)" , advance="no") A(i,j)
             end do
-            write(*,*)
+            write(17,*) ""
         end do
+        write(17, *) ""
+        close(17)
     end subroutine print_r8
 
     function from4to2dim(f,s,A) result(out)
