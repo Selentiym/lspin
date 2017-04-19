@@ -150,11 +150,15 @@ contains
         !print *, coeff1
         !print *, coeff2
         test = gammaRel
+        test = 0.0D+00
+        test = coeff1
+        test = 0.0D+00
+        test = coeff2
         if (Nr .eq. -100) then
             out = 1.0D+00
         else
-        out = (dots(dotNum)**gammaRel) * &
-        !out =  & !x ** gammaRel тоже учитывается в интегралах
+        !out = (dots(dotNum)**gammaRel) * &
+        out =  & !x ** gammaRel тоже учитывается в интегралах
         !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
         ( &
             - coeff1 * laguerrePoly(dotNum, Nr-1) &
@@ -318,7 +322,7 @@ contains
         !На основе полученных параметров вычисляем коэффициенты при полиномах лагерра
         Norm = sqrt(Nr**2 + 2*Nr*gammaRel + kappa**2)
 
-        !testGamma = Norm
+        testGamma = Norm
 
         ULdiff = ((Norm - kappa)/(Nr + 2.0*gammaRel))
 
@@ -334,8 +338,13 @@ contains
 
         realNorm = sqrt(coeff1 ** 2 *laguerrePolyNorm(Nr - 1) + coeff2 ** 2 * laguerrePolyNorm(Nr))
 
-        coeff1 = coeff1 / realNorm
-        coeff2 = coeff2 / realNorm
+        if (realNorm == 0.0D+00) then
+            coeff1 = 0.0D+00
+            coeff2 = 0.0D+00
+        else
+            coeff1 = coeff1 / realNorm
+            coeff2 = coeff2 / realNorm
+        end if
 
     end subroutine setLspinorParameters
 
@@ -358,5 +367,36 @@ contains
         real(WP)::x, ampl
         ampl = exp(-x/2) * x ** (gammaRel)
     end function ampl
+
+    function calcExtendedDeriv(func, deriv, fParam,dParam, point) result (out)
+
+        !external func
+        !external deriv
+        real(WP)::out, func, deriv, test123
+        integer::point, fParam, dParam
+
+
+        out = -0.5_WP * func(point, fParam) &
+        + gammaRel * func(point, fParam) / dots(point) + deriv(point, dParam)
+
+    end function calcExtendedDeriv
+
+    function power(point, powerC) result(out)
+        real(WP)::out
+        integer::point, powerC
+        out = dots(point) ** real(powerC,WP)
+    end function power
+
+    function powerDeriv(point, power) result(out)
+        real(WP)::out,powerDerivCoeff
+        integer::point, power
+
+        powerDerivCoeff = real(power,WP)
+        if (powerDerivCoeff == 0.0_WP) then
+            out = 0.0_WP
+        else
+            out = powerDerivCoeff * dots(point) ** (powerDerivCoeff - 1.0_WP)
+        end if
+    end function powerDeriv
 
 end module lspinors

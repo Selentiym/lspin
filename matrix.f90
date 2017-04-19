@@ -1,4 +1,5 @@
 module matrix
+    character::fileNameInMod
     contains
     subroutine eigvect_c8 (A, OUTp)
         integer::N
@@ -6,6 +7,7 @@ module matrix
         real(8), allocatable::OUTp(:),rwork(:)
         complex(8), allocatable :: work(:)
         integer::i,j,lwork
+        integer::toFile
 
         N=size(A,1)
 
@@ -58,15 +60,24 @@ module matrix
         integer::i,k, firstIndex, upperBound1, upperBound2
         upperBound1 = size(A,1) - 1 + firstIndex
         upperBound2 = size(A,2) - 1 + firstIndex
-        open(unit=17, file="matrix_output.dat",Access = 'append',status="old")
-        do i=firstIndex,upperBound1
-            do j=firstIndex,upperBound2
-                write(17, "(F10.2)" , advance="no") A(i,j)
+        if (toFile == 1) then
+            open(unit=17, file=fileNameInMod,Access = 'append',status="old")
+            do i=firstIndex,upperBound1
+                do j=firstIndex,upperBound2
+                    write(17, "(F10.2)" , advance="no") A(i,j)
+                end do
+                write(17,*) ""
             end do
-            write(17,*) ""
-        end do
-        write(17, *) ""
-        close(17)
+            write(17, *) ""
+            close(17)
+        else
+            do i=firstIndex,upperBound1
+                do j=firstIndex,upperBound2
+                    write(*, "(F10.4)" , advance="no") A(i,j)
+                end do
+                write(*,*) ""
+            end do
+        end if
     end subroutine print_r8
 
     function from4to2dim(f,s,A) result(out)
@@ -83,5 +94,13 @@ module matrix
         integer::f,s
         call print_r8(from4to2dim(f, s, A), 1)
     end subroutine print4dimAs2
+
+    subroutine setWriteToFile(iFileName)
+        character::iFileName
+        fileNameInMod = iFileName
+        open(unit=17,file=fileNameInMod,status="replace")
+        close(17)
+        toFile = 1
+    end subroutine setWriteToFile
 
 end module matrix
