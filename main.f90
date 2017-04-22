@@ -17,7 +17,8 @@ program compute
     !Длина всегда N + 1, чтобы интегрировать перекрестные м. элементы точно
     real(WP), allocatable::x(:),w(:)
     !Счетчики
-    integer :: i, j, k
+    integer :: i, j, k, l
+    real(WP):: quantN, quantJ, quantL
     !Угловой параметр, от него многое зависит
     real(WP)::kappa
     !Зарядовое число. Непонятно, откуда оно взялось, если учесть, что
@@ -50,6 +51,8 @@ program compute
     read(18, *) kappa
     read(18, *) Z
 
+    quantJ = abs(kappa) - 0.5_WP
+
     open(unit=19,file="matrix_output.dat",status="replace")
     write(19,*) ""
     close(19)
@@ -66,9 +69,13 @@ program compute
     !алгебраическая точность квадратурной формулы Гусса-Лагерра равна
     ! 2*qLen - 1. Чтобы интегрировать произведения полиномов Лагерра (степень 2*N),
     !нужно взять такую qLen:
-    qLen = 400
+    qLen = 2*N + 2
     !qLen = max(N+1, 3000)
-    call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa, Z))
+    !Матрица производных не получается антисимметричной, так как мы считаем производную
+    !именно от базисной функции, а там дифференцируется X**alpha, который должен уходить в
+    !формулу квадратуры, а после дифференцирования получается alpha*X**alpha / X,
+    !который как раз и дает проблему!
+    call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa, Z),1.0D+00)
     call setLspinorGlobalParameters(N, kappa, Z, getIntegrateGridLength(), getIntegrateGrid())
     !allocate(testV(qLen))
     !Проблемы с 0 порядком
@@ -116,29 +123,29 @@ program compute
         end do
     else
         !Считаем все необходимые матричные элементы на полиномах Лагерра
-        do i=1,N
-            do j=1,N
-            !i = k-1
-            !j = l-1
+        do k=1,N
+            do l=1,N
+            i = k-1
+            j = l-1
             !Матрица неортогональности
-            gram(1,1,i,j) = integrateOnGrid(lagVector(i, 'U'),lagVector(j, 'U'))
+            gram(1,1,k,l) = integrateOnGrid(lagVector(i, 'U'),lagVector(j, 'U'))
             !gram(1,2,i,j) = integrateOnGrid(lagVector(i, 'U'),lagVector(j, 'L'))
            ! gram(2,1,i,j) = integrateOnGrid(lagVector(i, 'L'),lagVector(j, 'U'))
-            gram(2,2,i,j) = integrateOnGrid(lagVector(i, 'L'),lagVector(j, 'L'))
+            gram(2,2,k,l) = integrateOnGrid(lagVector(i, 'L'),lagVector(j, 'L'))
             !Матричный элемент потенциала
-            V(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(VPot, j,'U'))
+            V(1,1,k,l) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(VPot, j,'U'))
             !V(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(VPot, j,'L'))
             !V(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(VPot, j,'U'))
-            V(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(VPot, j,'L'))
+            V(2,2,k,l) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(VPot, j,'L'))
             !С 1/r
             !revLen(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(oneToX, j,'U'))
-            revLen(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(oneToX, j,'L'))
-            revLen(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(oneToX, j,'U'))
+            revLen(1,2,k,l) = integrateOnGrid(lagVector(i,'U'), lagVectorWithFunc(oneToX, j,'L'))
+            revLen(2,1,k,l) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(oneToX, j,'U'))
             !revLen(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagVectorWithFunc(oneToX, j,'L'))
             !Производные
             !deriv(1,1,i,j) = integrateOnGrid(lagVector(i,'U'), lagDerivativeVector(j,'U'))
-            deriv(1,2,i,j) = integrateOnGrid(lagVector(i,'U'), lagDerivativeVector(j,'L'))
-            deriv(2,1,i,j) = integrateOnGrid(lagVector(i,'L'), lagDerivativeVector(j,'U'))
+            deriv(1,2,k,l) = integrateOnGrid(lagVector(i,'U'), lagDerivativeVector(j,'L'))
+            deriv(2,1,k,l) = integrateOnGrid(lagVector(i,'L'), lagDerivativeVector(j,'U'))
             !deriv(2,2,i,j) = integrateOnGrid(lagVector(i,'L'), lagDerivativeVector(j,'L'))
             end do
         end do
@@ -160,10 +167,10 @@ program compute
 !        end do
 !    end if
     !Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
-    Ham(1:N,1:N) = V(1,1,:,:)
+    Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
     Ham(1:N,N+1:2*N) = -c * deriv(1,2,:,:) + c * kappa * revLen(1,2,:,:)
-    Ham(N+1:2*N,1:N) = c * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
-    Ham(N+1:2*N,N+1:2*N) = - 2*c**2 * gram(2,2,:,:) + V(2,2,:,:)
+    Ham(N+1:2*N,1:N) = +c * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
+    Ham(N+1:2*N,N+1:2*N) = - c**2 * gram(2,2,:,:) + V(2,2,:,:)
     S(:,:) = 0;
     S(1:N,1:N) = gram(1,1,:,:)
     S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
@@ -182,10 +189,15 @@ program compute
 
     !call print_r8(Ham)
 
-    E(:) = E(:)
+    E(:) = E(:) - c**2
 
     do i=2*N,N+1,-1
-        print *, "E=",E(i)," n=",Z/sqrt(-2*E(i))
+!        print *, "E=",E(i)," n=",Z/sqrt(-2*E(i))
+        quantN = i - N
+        print *, "E=",E(i), "right Energy=", rightEnergy(quantN, quantJ), ' relative diff=',(E(i) - rightEnergy(quantN, quantJ))/abs(E(i))
+
+
+        !0.5_WP*(1/quantN**2-1/c**2/quantN**3( 1/(0.5_WP + quantJ) - 0.75_WP/quantN ))
     end do
 
     deallocate(Ham)

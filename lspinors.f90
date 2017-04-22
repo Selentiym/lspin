@@ -15,12 +15,14 @@ module lspinors
     character::letter           !Буква, определяющая компоненту спинора
                                 ! 'U' - верхняя, 'L' - нижняя
     real(WP), allocatable::lValues(:,:) !Хранит вычисленные однажды значения функции Лагерра
+    real(WP), allocatable::lDerivValues(:,:)    !Хранит вычисленные однажды значения
+                                                !производной функции Лагерра
     integer::nDots, maxN    !Количество этих точек и максимальный порядок функции Лагерра
     real(WP), allocatable::dots(:)      !Точки, в которых нужны спиноры
 
     private::Z, kappa, Nr, Norm, gammaRel, ULdiff, realNorm
 !    private:: coeff1, coeff2
-    private::nDots, maxN, dots, letter, lValues
+    private::nDots, maxN, dots, letter, lValues, lDerivValues
 
 contains
 !    function lspinor(x) result(out)
@@ -209,8 +211,9 @@ contains
 !        print *, dots
         !Непосредственно считаем
         do k=1,nDots
-            out(k) = laguerrePoly(k, iNr) * func(dots(k)) / sqrt(laguerrePolyNorm(iNr))
+            out(k) = laguerrePoly(k, iNr) * func(dots(k))
         end do
+        out(:) = out(:)/sqrt(laguerrePolyNorm(iNr))
     end function lagVectorWithFunc
 
     function lagDerivativeVectorWithFunc(func, iNr, iLetter) result(out)
@@ -244,11 +247,12 @@ contains
         implicit none
         real(WP)::out
         integer::dotNum, degree
-        out = 1/dots(dotNum) * &
-         ( &
-            real(degree, WP) * laguerrePoly(dotNum, degree) &
-             - (real(degree,WP) + 2.0_WP*gammaRel) * laguerrePoly(dotNum, degree - 1) &
-         )
+        out = lDerivValues(dotNum, degree)
+!        out = 1/dots(dotNum) * &
+!         ( &
+!            real(degree, WP) * laguerrePoly(dotNum, degree) &
+!             - (real(degree,WP) + 2.0_WP*gammaRel) * laguerrePoly(dotNum, degree - 1) &
+!         )
     end function laguerrePolyDerivative
 
     function laguerrePoly(dotNum, degree) result(out)
@@ -274,7 +278,7 @@ contains
     end function deltaCronecker
 
     subroutine setLspinorGlobalParameters(iMaxN, iKappa, iZ, iNDots, iDots)
-        real(WP),allocatable::debugLValues(:,:)
+        real(WP),allocatable::debugLValues(:,:), debugLDerivValues(:,:)
         !Они выделены, тк для них нужно запускать расчет функции Лагерра
         !Кроме того, для фиксированного kappa все функции Лагерра
         !в lspinor'ах одинаковы
@@ -295,13 +299,18 @@ contains
         testGamma = gammaRel
         !Переменная модуля, хранит значения функций Лагерра нужных порядков
         if (allocated(lValues)) deallocate (lValues)
+        if (allocated(lDerivValues)) deallocate (lDerivValues)
         allocate(lValues(nDots,0:maxN))
+        allocate(lDerivValues(nDots,0:maxN))
         allocate(debugLValues(nDots,0:maxN))
+        allocate(debugLDerivValues(nDots,0:maxN))
         !Сохранили значения.
 
-        call lf_function ( nDots, maxN, 2.0_WP * gammaRel, dots, debugLValues )
+        call lf_function_derivative ( nDots, maxN, 2.0_WP * gammaRel, dots, debugLValues, debugLDerivValues )
         lValues(:,:) = debugLValues(:,:)
+        lDerivValues(:,:) = debugLDerivValues(:,:)
         deallocate(debugLValues)
+        deallocate(debugLDerivValues)
     end subroutine setLspinorGlobalParameters
 
     function calculateGamma(iKappa, iZ) result(out)
@@ -398,5 +407,127 @@ contains
             out = powerDerivCoeff * dots(point) ** (powerDerivCoeff - 1.0_WP)
         end if
     end function powerDeriv
+
+
+    subroutine lf_function_derivative ( m, n, alpha, x, cx, cd )
+
+!*****************************************************************************80
+!
+!! LF_FUNCTION evaluates the Laguerre function Lf(n,alpha,x).
+!
+!  Recursion:
+!
+!    Lf(0,ALPHA,X) = 1
+!    Lf(1,ALPHA,X) = 1+ALPHA-X
+!
+!    Lf(N,ALPHA,X) = (2*N-1+ALPHA-X)/N * Lf(N-1,ALPHA,X)
+!                      - (N-1+ALPHA)/N * Lf(N-2,ALPHA,X)
+!
+!  Restrictions:
+!
+!    -1 < ALPHA
+!
+!  Special values:
+!
+!    Lf(N,0,X) = L(N,X).
+!    Lf(N,ALPHA,X) = LM(N,ALPHA,X) for ALPHA integral.
+!
+!  Norm:
+!
+!    Integral ( 0 <= X < +oo ) exp ( - X ) * Lf(N,ALPHA,X)^2 dX
+!    = Gamma ( N + ALPHA + 1 ) / N!
+!
+!  Licensing:
+!
+!    This code is distributed under the GNU LGPL license.
+!
+!  Modified:
+!
+!    10 March 2012
+!
+!  Author:
+!
+!    John Burkardt
+!
+!  Reference:
+!
+!    Milton Abramowitz, Irene Stegun,
+!    Handbook of Mathematical Functions,
+!    National Bureau of Standards, 1964,
+!    ISBN: 0-486-61272-4,
+!    LC: QA47.A34.
+!
+!  Parameters:
+!
+!    Input, integer ( kind = 4 ) M, the number of evaluation points.
+!
+!    Input, integer ( kind = 4 ) N, the highest order function to compute.
+!
+!    Input, real ( kind = 8 ) ALPHA, the parameter.  -1 < ALPHA is required.
+!
+!    Input, real ( kind = 8 ) X(M), the evaluation points.
+!
+!    Output, real ( kind = 8 ) CX(1:M,0:N), the functions of
+!    degrees 0 through N evaluated at the points X.
+
+!    Output, real ( kind = 8 ) CD(1:M,0:N), the derivatives of functions of
+!    degrees 0 through N evaluated at the points X.
+!
+  implicit none
+
+  integer ( kind = 4 ) m
+  integer ( kind = 4 ) n
+
+  real ( kind = 8 ) alpha
+  real ( kind = 8 ) cx(1:m,0:n)
+  real ( kind = 8 ) cd(1:m,0:n)
+  integer ( kind = 4 ) i
+  real ( kind = 8 ) x(1:m)
+
+  if ( alpha <= -1.0D+00 ) then
+    write ( *, '(a)' ) ' '
+    write ( *, '(a)' ) 'LF_FUNCTION - Fatal error!'
+    write ( *, '(a,g14.6)' ) '  The input value of ALPHA is ', alpha
+    write ( *, '(a)' ) '  but ALPHA must be greater than -1.'
+    stop
+  end if
+
+  if ( n < 0 ) then
+    return
+  end if
+
+  cx(1:m,0) = 1.0D+00
+  cd(1:m,0) = 0.0D+00
+
+  if ( n == 0 ) then
+    return
+  end if
+
+  cx(1:m,1) = 1.0D+00 + alpha - x(1:m)
+  cd(1:m,1) = -1.0D+00
+
+  do i = 2, n
+    cx(1:m,i) = ( &
+      ( real ( 2 * i - 1, kind = 8 ) + alpha - x(1:m) ) * cx(1:m,i-1)   &
+    + ( real (   - i + 1, kind = 8 ) - alpha          ) * cx(1:m,i-2) ) &
+      / real (     i,     kind = 8 )
+    cd(1:m,i) = ( &
+      ( real ( 2 * i - 1, kind = 8 ) + alpha - x(1:m) ) * cd(1:m,i-1) - cx(1:m,i-1)   &
+    + ( real (   - i + 1, kind = 8 ) - alpha          ) * cd(1:m,i-2) ) &
+      / real (     i,     kind = 8 )
+!    cd(1:m,i) = ( &
+!      ( real ( 2 * i - 1, kind = 8 ) + alpha - x(1:m) ) * cd(1:m,i-1)   &
+!    + ( real (   - i + 1, kind = 8 ) - alpha          ) * cd(1:m,i-2)   &
+!    - cx(1:m,i-1)*0 ) &
+!      / real (     i,     kind = 8 )
+  end do
+
+  return
+end subroutine lf_function_derivative
+
+function rightEnergy(n,j)
+    real(WP)::n,j, rightEnergy
+    rightEnergy = -0.5_WP*Z**2*(1/n**2 - 1/(c**2*n**3) * ( 1/(0.5_WP + j) - 0.75_WP/n ))
+end function rightEnergy
 
 end module lspinors

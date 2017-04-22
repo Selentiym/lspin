@@ -73,7 +73,7 @@ module matrix
         else
             do i=firstIndex,upperBound1
                 do j=firstIndex,upperBound2
-                    write(*, "(F10.4)" , advance="no") A(i,j)
+                    write(*, "(F24.16)" , advance="no") A(i,j)
                 end do
                 write(*,*) ""
             end do
