@@ -7,8 +7,10 @@ module integrate
                         !полинома Лагерра, корнями которого являются узлы
     real(WP), allocatable::x(:),w(:) !Узлы и веса квадратуры соответственно
     real(WP) :: offset  !Сдвигквадратура относительно базисных функций. Для правильного
+                        !подсчета интегралов типа 1/x**param, param <= offset, param целый
                         !Квадратура будет считаться для exp(-x)*x**(alpha - offset)
-    private qLen, x, w, offset
+    real(WP) :: coordScale = 1.0_WP
+    private qLen, x, w, offset, coordScale
 
 contains
     subroutine setQuadratureParameters(iQLen, iAlpha, iOffset)
@@ -39,6 +41,7 @@ contains
         do i=1,qLen
             out = out + f1(i)*f2(i)*w(i)*x(i)**(offset)
         end do
+        out = out / coordScale
     end function integrateOnGrid
 
     function getIntegrateGrid()
@@ -58,5 +61,10 @@ contains
         allocate(wOut(qLen))
         wOut(:) = w(:)
     end function getIntegrateWeights
+
+    subroutine setQuadratureArgumentScale(iScale)
+        real(WP)::iScale
+        coordScale = iScale
+    end subroutine setQuadratureArgumentScale
 
 end module integrate

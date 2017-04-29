@@ -20,7 +20,10 @@ module lspinors
     integer::nDots, maxN    !Количество этих точек и максимальный порядок функции Лагерра
     real(WP), allocatable::dots(:)      !Точки, в которых нужны спиноры
 
-    private::Z, kappa, Nr, Norm, gammaRel, ULdiff, realNorm
+    real(WP)::coordScale = 1.0_WP   !Поскольку может понадобиться растянуть базисные функции,
+                                    !а это делать неудобно из-за интегрирования, растягивать будем в другую сторону все
+                                    ! все остальные посредством coordsScale
+    private::Z, kappa, Nr, Norm, gammaRel, ULdiff, realNorm, coordScale
 !    private:: coeff1, coeff2
     private::nDots, maxN, dots, letter, lValues, lDerivValues
 
@@ -112,7 +115,7 @@ contains
 !        print *, dots
         !Непосредственно считаем
         do k=1,nDots
-            out(k) = lspinor(k) * func(dots(k))
+            out(k) = lspinor(k) * func(coordScale * dots(k))
         end do
     end function lspinorVectorWithFunc
 
@@ -132,7 +135,7 @@ contains
 !        print *, dots
         !Непосредственно считаем
         do k=1,nDots
-            out(k) = lspinorDerivative(k) * func(dots(k))
+            out(k) = lspinorDerivative(k) * func(coordScale * dots(k))
         end do
     end function lspinorDerivativeVectorWithFunc
 
@@ -211,7 +214,7 @@ contains
 !        print *, dots
         !Непосредственно считаем
         do k=1,nDots
-            out(k) = laguerrePoly(k, iNr) * func(dots(k))
+            out(k) = laguerrePoly(k, iNr) * func(coordScale * dots(k))
         end do
         out(:) = out(:)/sqrt(laguerrePolyNorm(iNr))
     end function lagVectorWithFunc
@@ -234,7 +237,7 @@ contains
         do k=1,nDots
             !Базисная функция - не просто полином Лагерра, а домноженный
             !на exp(-x/2)*x**gammaRel
-            out(k) = func(dots(k)) * &
+            out(k) = func(coordScale * dots(k)) * &
             (&
                 laguerrePolyDerivative(k, iNr) &
                 -0.5_WP * laguerrePoly(k, iNr)  &
@@ -333,7 +336,7 @@ contains
 
         testGamma = Norm
 
-        ULdiff = ((Norm - kappa)/(Nr + 2.0*gammaRel))
+        ULdiff = ((Norm + abs(kappa))/(Nr + 2.0*gammaRel))
 
         if (letter == 'L') then
             ULdiff = -ULdiff
@@ -527,7 +530,12 @@ end subroutine lf_function_derivative
 
 function rightEnergy(n,j)
     real(WP)::n,j, rightEnergy
-    rightEnergy = -0.5_WP*Z**2*(1/n**2 - 1/(c**2*n**3) * ( 1/(0.5_WP + j) - 0.75_WP/n ))
+    rightEnergy = -0.5_WP*Z**2*(1/n**2 + 1/(c**2*n**3) * ( 1/(0.5_WP + j) - 0.75_WP/n ))
 end function rightEnergy
+
+subroutine setBasisScale(iScale)
+    real(WP) :: iScale
+    coordScale = 1.0D+00/iScale
+end subroutine setBasisScale
 
 end module lspinors

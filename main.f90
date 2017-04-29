@@ -18,14 +18,19 @@ program compute
     real(WP), allocatable::x(:),w(:)
     !Счетчики
     integer :: i, j, k, l
-    real(WP):: quantN, quantJ, quantL
-    !Угловой параметр, от него многое зависит
-    real(WP)::kappa
+    !Квантовые числа. Пока что главное число - kappa
+    real(WP):: quantN, quantJ, quantL, kappa
     !Зарядовое число. Непонятно, откуда оно взялось, если учесть, что
     !потенциал пока что должен быть произвольным
     real(WP)::Z
+    !Всякий мусор сюда можно кидать, а также какое-нибудь трапециевое интегрирование
     real(WP)::summa
-
+    !Параметр растяжения по координате. Предполагается, что радиальная часть
+    !волновой функции раскладывается по L(xScale * x), в статье было
+    !xScale = 2*lambda, однако мне удобнее вынести соответствующие множители в
+    real(WP)::xScale
+    !Сдвиг степени квадратуры. Смотри модуль интегрирования за более подробными комментариями
+    real(WP)::qOffset
     !Тут начинаются переменные для матричных элементов
     !Перекрестные скалярные произведения L-спиноров (пока что радиальных частей)
     real(WP), allocatable::gram(:,:,:,:)
@@ -50,6 +55,8 @@ program compute
     read(18, *) N
     read(18, *) kappa
     read(18, *) Z
+    read(18, *) xScale
+    read(18, *) qOffset
 
     quantJ = abs(kappa) - 0.5_WP
 
@@ -75,7 +82,9 @@ program compute
     !именно от базисной функции, а там дифференцируется X**alpha, который должен уходить в
     !формулу квадратуры, а после дифференцирования получается alpha*X**alpha / X,
     !который как раз и дает проблему!
-    call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa, Z),1.0D+00)
+    call setQuadratureParameters(qLen, 2.0D+00 * calculateGamma(kappa, Z),qOffset)
+    call setQuadratureArgumentScale(xScale)
+    call setBasisScale(xScale)
     call setLspinorGlobalParameters(N, kappa, Z, getIntegrateGridLength(), getIntegrateGrid())
     !allocate(testV(qLen))
     !Проблемы с 0 порядком
@@ -95,29 +104,29 @@ program compute
 
     if (letter == 'L') then
         !Считаем все необходимые матричные элементы на L-spinor'ах
-        do i=1,N
-            do j=1,N
-            !i = k-1
-            !j = l-1
+        do k=1,N
+            do l=1,N
+            i = k-1
+            j = l-1
             !Матрица неортогональности
-            gram(1,1,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'U'))
+            gram(1,1,k,l) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'U'))
             !gram(1,2,i,j) = integrateOnGrid(lspinorVector(i, 'U'),lspinorVector(j, 'L'))
            ! gram(2,1,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'U'))
-            gram(2,2,i,j) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'L'))
+            gram(2,2,k,l) = integrateOnGrid(lspinorVector(i, 'L'),lspinorVector(j, 'L'))
             !Матричный элемент потенциала
-            V(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'U'))
+            V(1,1,k,l) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'U'))
             !V(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(VPot, j,'L'))
             !V(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'U'))
-            V(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'L'))
+            V(2,2,k,l) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(VPot, j,'L'))
             !С 1/r
             !revLen(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'U'))
-            revLen(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'L'))
-            revLen(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
+            revLen(1,2,k,l) = integrateOnGrid(lspinorVector(i,'U'), lspinorVectorWithFunc(oneToX, j,'L'))
+            revLen(2,1,k,l) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'U'))
             !revLen(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorVectorWithFunc(oneToX, j,'L'))
             !Производные
-            deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
-            deriv(1,2,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
-            deriv(2,1,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
+            !deriv(1,1,i,j) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'U'))
+            deriv(1,2,k,l) = integrateOnGrid(lspinorVector(i,'U'), lspinorDerivativeVector(j,'L'))
+            deriv(2,1,k,l) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'U'))
             !deriv(2,2,i,j) = integrateOnGrid(lspinorVector(i,'L'), lspinorDerivativeVector(j,'L'))
             end do
         end do
@@ -167,10 +176,10 @@ program compute
 !        end do
 !    end if
     !Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
-    Ham(1:N,1:N) = c**2 * gram(1,1,:,:) + V(1,1,:,:)
-    Ham(1:N,N+1:2*N) = -c * deriv(1,2,:,:) + c * kappa * revLen(1,2,:,:)
-    Ham(N+1:2*N,1:N) = +c * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
-    Ham(N+1:2*N,N+1:2*N) = - c**2 * gram(2,2,:,:) + V(2,2,:,:)
+    Ham(1:N,1:N) = V(1,1,:,:)
+    Ham(1:N,N+1:2*N) = -c * xScale *deriv(1,2,:,:) + c * kappa * revLen(1,2,:,:)
+    Ham(N+1:2*N,1:N) = +c * xScale * deriv(2,1,:,:) + c * kappa * revLen(2,1,:,:)
+    Ham(N+1:2*N,N+1:2*N) = - 2*c**2 * gram(2,2,:,:) + V(2,2,:,:)
     S(:,:) = 0;
     S(1:N,1:N) = gram(1,1,:,:)
     S(N+1:2*N,N+1:2*N) = gram(2,2,:,:)
@@ -189,16 +198,21 @@ program compute
 
     !call print_r8(Ham)
 
-    E(:) = E(:) - c**2
+    !E(:) = E(:) - c**2
+
+    open(unit=19,file="basis.rez",status="replace")
+    write(19,*) "kappa=",kappa," scale=",xScale, " Z=",Z, " basis Length=",N," basis type=",letter
 
     do i=2*N,N+1,-1
 !        print *, "E=",E(i)," n=",Z/sqrt(-2*E(i))
-        quantN = i - N
-        print *, "E=",E(i), "right Energy=", rightEnergy(quantN, quantJ), ' relative diff=',(E(i) - rightEnergy(quantN, quantJ))/abs(E(i))
+        quantN = abs(kappa) + i - N - 1
+        write(19, *) "E=",E(i), "right Energy=", rightEnergy(quantN, quantJ), &
+        ' relative diff=',(E(i) - rightEnergy(quantN, quantJ))/abs(E(i))
 
 
         !0.5_WP*(1/quantN**2-1/c**2/quantN**3( 1/(0.5_WP + quantJ) - 0.75_WP/quantN ))
     end do
+    close(19)
 
     deallocate(Ham)
     deallocate(S)

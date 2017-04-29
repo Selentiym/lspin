@@ -4,7 +4,6 @@
 
 # Add inputs and outputs from these tool invocations to the build variables 
 F90_SRCS += \
-../basis.f90 \
 ../constants.f90 \
 ../integrate.f90 \
 ../laguerre.f90 \
@@ -15,7 +14,6 @@ F90_SRCS += \
 ../test.f90 
 
 OBJS += \
-./basis.o \
 ./constants.o \
 ./integrate.o \
 ./laguerre.o \
@@ -33,8 +31,6 @@ OBJS += \
 	gfortran -funderscoring -O0 -g -Wall -c -fmessage-length=0 -o "$@" "$<"
 	@echo 'Finished building: $<'
 	@echo ' '
-
-basis.o: ../basis.f90 constants.o laguerre.o
 
 constants.o: ../constants.f90
 
