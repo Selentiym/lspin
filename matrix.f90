@@ -27,7 +27,9 @@ module matrix
     end subroutine eigvect_c8
 
     subroutine general_eigvect_r8 (H, S, OUTp)
-    real(8),allocatable::OUTp(:), work(:), iwork(:), H(:,:),S(:,:)
+    !Solve H*x=\lambda*S*x problem
+    real(8),allocatable::OUTp(:), work(:), iwork(:),S(:,:)
+    real(8),allocatable::H(:,:) !On output contains matrix of eigenvectors
     integer:: N, itype, lda, ldb, lwork, liwork, info
     character:: jobz, uplo
 

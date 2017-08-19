@@ -73,9 +73,49 @@
 !    deallocate(lspin2)
 !
 !    !call testLaguerreDerivIntegralsAssymetry()
-!    call testLaguerreDerivIntegralsAssymetry()
+!!    call testLaguerreDerivIntegralsAssymetry()
+!    call drawSpinor(0, 'U')
 !
+!    print *,"end"
 !contains
+!
+!
+!    subroutine drawSpinor(iNr, iLetter)
+!        integer::iNr, N, i
+!        character::iLetter
+!        real(WP), allocatable::x(:), lspin1(:),lspin2(:), lspin3(:)
+!        real(WP) :: const, testKappa, test
+!
+!        N = 1000
+!        testKappa = -1.0
+!        allocate(x(N))
+!        allocate(lspin1(N))
+!        allocate(lspin2(N))
+!        allocate(lspin3(N))
+!        do i=1,N
+!            x(i) = i/50.0D+00 + 1.0D-04
+!        end do
+!        !call setLspinorGlobalParameters(N, kappa, Z, getIntegrateGridLength(), getIntegrateGrid())
+!        call setLspinorGlobalParameters(iNr,testKappa, 0.0D+00, N, x)
+!        open(unit=18, file='lspinor.dat', status='replace')
+!        lspin1 = lspinorVector(iNr, 'L')
+!        lspin2 = lspinorDerivativeVector(iNr, 'U')
+!        lspin3 = lspinorVector(iNr, 'L')
+!        const = 1.0
+!        do i=1,N
+!!            test = (x(i)/const)**2*exp(-x(i)/2/const)
+!            test = (x(i)/const)*exp(-x(i)/2/const)
+!            !write(18, *) x(i), lspin3(i)*ampl(x(i)), (lspin2(i) + testKappa/x(i)*lspin1(i))*ampl(x(i))
+!            write(18, *) x(i), lspin1(i)*ampl(x(i)), test,0.0_WP!, lspin1(i)*ampl(x(i))/test
+!        end do
+!
+!        close(18)
+!        deallocate(x)
+!        deallocate(lspin1)
+!        deallocate(lspin2)
+!        deallocate(lspin3)
+!    end subroutine drawSpinor
+!
 !
 !    subroutine testLaguerreDerivIntegralsAssymetry()
 !        real(WP), allocatable::poly1(:),poly2(:), derivTest(:,:),derivTest2(:,:), w1(:), x1(:), printMatr1(:,:),printMatr2(:,:)

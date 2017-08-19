@@ -23,6 +23,9 @@ module lspinors
     real(WP)::coordScale = 1.0_WP   !Поскольку может понадобиться растянуть базисные функции,
                                     !а это делать неудобно из-за интегрирования, растягивать будем в другую сторону все
                                     ! все остальные посредством coordsScale
+    logical ::addExponent = .false. !Добавлять ли в спинор экспоненту и степень
+    real(WP)::powerCached           !Хранит показатель степени, которая будет выдана
+                                    !функцией powerPreset
     private::Z, kappa, Nr, Norm, gammaRel, ULdiff, realNorm, coordScale
 !    private:: coeff1, coeff2
     private::nDots, maxN, dots, letter, lValues, lDerivValues
@@ -107,16 +110,25 @@ contains
         external func  !Для большей гибкости передаю функцию, на которую домножается Lspinor
         integer::iNr
         character::iLetter
-        real(WP)::out(nDots), dot, func
+        real(WP)::out(nDots), dot, func, arg
         integer::k !Счетчик
 
         !Настраиваем нужный спинор
         call setLspinorParameters(iNr, iLetter)
 !        print *, dots
         !Непосредственно считаем
-        do k=1,nDots
-            out(k) = lspinor(k) * func(coordScale * dots(k))
-        end do
+        if (addExponent) then
+            do k=1,nDots
+                arg = coordScale * dots(k)
+                out(k) = lspinor(k) * func(arg) * exp(-arg*0.5_WP) * arg**gammaRel
+!                print *, arg, out(k),k
+            end do
+        else
+            do k=1,nDots
+                out(k) = lspinor(k) * func(coordScale * dots(k))
+            end do
+        end if
+
     end function lspinorVectorWithFunc
 
     function lspinorDerivativeVectorWithFunc(func, iNr, iLetter) result(out)
@@ -142,8 +154,9 @@ contains
     function lspinorDerivative(dotNum) result(out)
         integer::dotNum
         real(WP)::out
+
         out = gammaRel * lspinor(dotNum) / dots(dotNum) - &
-        0.5_WP * lspinor(dotNum) + &
+        0.5_WP * lspinor(dotNum) + 1.0_WP * &
         (-coeff1 * laguerrePolyDerivative(dotNum, Nr - 1) + &
          coeff2 * laguerrePolyDerivative(dotNum, Nr))
     end function lspinorDerivative
@@ -159,11 +172,10 @@ contains
         test = coeff1
         test = 0.0D+00
         test = coeff2
-        if (Nr .eq. -100) then
-            out = 1.0D+00
-        else
+
+
         !out = (dots(dotNum)**gammaRel) * &
-        out =  & !x ** gammaRel тоже учитывается в интегралах
+        out =  1.0_WP * & !x ** gammaRel тоже учитывается в интегралах
         !exp(-x/2) * & !Временно (или насовсем) убираем экпоненту, тк она при интегрировании учитывается
         ( &
             - coeff1 * laguerrePoly(dotNum, Nr-1) &
@@ -171,7 +183,6 @@ contains
         )
 
         !out = laguerrePoly(dotNum, Nr)
-        end if
     end function lspinor
 
     function lagVector(iNr, iLetter) result(out)
@@ -336,17 +347,27 @@ contains
 
         testGamma = Norm
 
-        ULdiff = ((Norm + abs(kappa))/(Nr + 2.0*gammaRel))
+!        if ((Nr == 0).and.(kappa > 0)) then
+!            Norm = -Norm
+!        end if
+
+        ULdiff = ((Norm - kappa)/(Nr + 2.0*gammaRel))
+
+!        if (ULdiff == 0.0_WP) then
+!            ULdiff = 1.0_WP
+!        end if
 
         if (letter == 'L') then
             ULdiff = -ULdiff
         end if
 
-        coeff1 = (-1.0_WP+deltaCronecker(Nr, 0)) * Norm
+        coeff1 = (1.0_WP-deltaCronecker(Nr, 0)) * Norm
         testGamma = coeff1
 
         coeff2 = Norm * ULdiff
         testGamma = coeff2
+
+
 
         realNorm = sqrt(coeff1 ** 2 *laguerrePolyNorm(Nr - 1) + coeff2 ** 2 * laguerrePolyNorm(Nr))
 
@@ -380,6 +401,81 @@ contains
         ampl = exp(-x/2) * x ** (gammaRel)
     end function ampl
 
+    function calcEigFuncExp(matr, num, qOffset) result(funcRez)
+        real(WP), allocatable :: matr(:,:)
+        integer :: num, qOffset
+        real(WP) :: funcRez(2,nDots)
+        funcRez = calcEigFuncWithFuncAndExp(matr, num, unityFunc, qOffset)
+    end function calcEigFuncExp
+
+    function calcEigFuncWithFuncAndExp(matr, num, func, io) result(tempMatr)
+        external func
+        real(WP), allocatable :: matr(:,:)
+        real(WP) :: funcRez(2,nDots), lsp(nDots), func, temp1, tempMatr(2,nDots)
+        character :: tempLetter
+        integer :: num, s, j, ind, N, io, offs
+        funcRez(:,:) = 0.0_WP
+        offs = io - 1
+        !qOffset = -qOffset + 1
+        print *, offs
+        s = size(matr,1)
+        N = floor(s/2.0_WP)
+        addExponent = .true.
+        do j=1,N
+!            temp1 =
+            ind = j
+            tempLetter = 'U'
+
+            lsp = lspinorVectorWithFunc(func, j + offs, tempLetter)
+            funcRez(1,:) = funcRez(1,:) + lsp(:) * matr(ind,num)
+
+            ind = j + N
+            tempLetter = 'L'
+
+            lsp = lspinorVectorWithFunc(func, j + offs, tempLetter)
+            funcRez(2,:) = funcRez(2,:) + lsp(:) * matr(ind,num)
+        end do
+        addExponent = .false.
+        tempMatr(:,:) = funcRez(:,:)
+    end function calcEigFuncWithFuncAndExp
+
+
+    function calcEigFunc(matr, num, qOffset) result(funcRez)
+        real(WP), allocatable :: matr(:,:)
+        integer :: num, qOffset
+        real(WP) :: funcRez(2,nDots)
+        funcRez = calcEigFuncWithFunc(matr, num, unityFunc, qOffset)
+    end function calcEigFunc
+
+    function calcEigFuncWithFunc(matr, num, func, io) result(tempMatr)
+        external func
+        real(WP), allocatable :: matr(:,:)
+        real(WP) :: funcRez(2,nDots), lsp(nDots), func, temp1, tempMatr(2,nDots)
+        character :: tempLetter
+        integer :: num, s, j, ind, N, io, offs
+        funcRez(:,:) = 0.0_WP
+        offs = io - 1
+        !qOffset = -qOffset + 1
+        print *, offs
+        s = size(matr,1)
+        N = floor(s/2.0_WP)
+        do j=1,N
+!            temp1 =
+            ind = j
+            tempLetter = 'U'
+
+            lsp = lspinorVectorWithFunc(func, j + offs, tempLetter)
+            funcRez(1,:) = funcRez(1,:) + lsp(:) * matr(ind,num)
+
+            ind = j + N
+            tempLetter = 'L'
+
+            lsp = lspinorVectorWithFunc(func, j + offs, tempLetter)
+            funcRez(2,:) = funcRez(2,:) + lsp(:) * matr(ind,num)
+        end do
+        tempMatr(:,:) = funcRez(:,:)
+    end function calcEigFuncWithFunc
+
     function calcExtendedDeriv(func, deriv, fParam,dParam, point) result (out)
 
         !external func
@@ -392,6 +488,11 @@ contains
         + gammaRel * func(point, fParam) / dots(point) + deriv(point, dParam)
 
     end function calcExtendedDeriv
+
+    function powerPreset(point) result(out)
+        real(WP)::out, point
+        out = point ** powerCached
+    end function powerPreset
 
     function power(point, powerC) result(out)
         real(WP)::out
@@ -528,9 +629,30 @@ contains
   return
 end subroutine lf_function_derivative
 
-function rightEnergy(n,j)
-    real(WP)::n,j, rightEnergy
-    rightEnergy = -0.5_WP*Z**2*(1/n**2 + 1/(c**2*n**3) * ( 1/(0.5_WP + j) - 0.75_WP/n ))
+function rightRadius(inpN, inpL, inpJ)
+    integer::inpN, inpL
+    real(WP)::rightRadius, inpJ, en, eps
+    en = rightEnergy(inpN, inpJ)
+    eps = 1 + en/c**2
+    rightRadius = - 0.5_WP/Z * (1.5_WP * (Z**2/eps) *(c**2 + eps)/(c**2 + 0.5_WP * eps) &
+    - kappa * (1.0_WP + kappa * eps) )
+    !print *, inpN, inpL, inpJ
+    rightRadius = 0.5_WP/Z * (3*inpN**2 - inpL*(inpL+1))
+end function rightRadius
+
+function rightEnergy(inpN,j)
+    integer :: inpN
+    real(WP)::n,j, rightEnergy, nr, num, root, summTemp
+    n = real(inpN,8)
+    nr = n - gammaRel
+    num = sqrt(n**2 - 2*nr*(abs(kappa) - gammaRel))
+    !rightEnergy = -Z**2/(num*(num + nr + gammaRel))
+    !rightEnergy = -0.5_WP*Z**2*(1/n**2 + 1/(c**2*n**3) * ( 1/(0.5_WP + j) - 0.75_WP/n ))
+    !rightEnergy = -Z**2/(num*(num+nr+gammaRel))
+    nr=n-abs(kappa)
+    summTemp = nr+gammaRel
+    root = sqrt(1.0_WP+(Z/c)**2/summTemp**2)
+    rightEnergy = -Z**2/summTemp**2/(root*(root+1.0_WP))
 end function rightEnergy
 
 subroutine setBasisScale(iScale)
